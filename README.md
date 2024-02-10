@@ -6,5 +6,7 @@
 * Textures
 * 3D Models
 <br>
+The 4th and final project is in a different project folder because the configuration properties<br>
+are different. Visual Studio 2019 was used.<br>
 ---All Project Results are shown in the SHOWCASE folder---
   
