@@ -9,7 +9,7 @@
 The 4th and final project is in a different project folder because the configuration properties<br>
 are different. Visual Studio 2019 was used.<br>
 Because the project folders are too big to upload follow the Google Drive Link to have<br>
-access to them.
+access to them -> https://drive.google.com/drive/folders/1GNByWtGqAhhrigxtqv_bHUChwkI-xMnK?usp=drive_link
 <br>
 ---All Project Results are shown in the SHOWCASE folder---
   
