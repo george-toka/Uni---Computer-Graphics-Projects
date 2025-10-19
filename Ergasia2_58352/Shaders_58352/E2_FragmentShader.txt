@@ -1,0 +1,110 @@
+#version 330 core
+
+//Struct to determine the overall lighting result from the sources based on material properties
+struct Material
+{
+	vec3 ambientColor;
+	vec3 diffuseColor;
+	vec3 specularColor;
+
+	float shininess;
+};
+#define NR_MATERIAL_TYPES 10
+uniform Material material[NR_MATERIAL_TYPES];
+
+
+//Point light Data
+struct PointLight
+{
+	vec3 position;
+	
+	vec3 ambientColor;
+	vec3 diffuseColor;
+	vec3 specularColor;
+
+	float constant;			//useful
+	float linear;			//for
+	float quadratic;		//attenuation
+};
+#define NR_POINT_LIGHTS 4
+uniform PointLight pointLights[NR_POINT_LIGHTS];
+
+
+
+//Directional Light Data
+struct DirLight
+{
+	vec3 position;
+	vec3 direction;
+
+	vec3 ambientColor;
+	vec3 diffuseColor;
+	vec3 specularColor;
+};
+#define NR_DIR_LIGHTS 2
+uniform DirLight dirLights[NR_DIR_LIGHTS];
+
+
+in vec3 normal;
+in vec3 fragmentPosition;
+
+uniform vec3 cameraPosition;
+
+uniform int MaterialIndex;
+
+//implemented functions for light sources
+vec3 DirectionalLightFunc(DirLight light, vec3 normal, vec3 viewDir, Material material)
+{
+	vec3 lightDir = normalize(-light.direction);
+	//diffuse shading
+	float diffAngle = max(dot(normal, lightDir), 0.0);
+	//specular shading
+	vec3 reflectDir = reflect(-lightDir, normal);
+	float specAngle = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+	//combine results
+	vec3 ambient = light.ambientColor * material.ambientColor;
+	vec3 diffuse = light.diffuseColor * material.diffuseColor * diffAngle;
+	vec3 specular = light.specularColor * material.specularColor * specAngle;
+
+	return (ambient + diffuse + specular);
+}
+
+vec3 PointLightFunc(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, Material material)
+{
+	vec3 lightDir = normalize(light.position - fragPos);
+	//diffuse shading 
+	float diffAngle = max(dot(lightDir, normal), 0.0);
+	//specular shading
+	vec3 reflectDir = reflect(-lightDir, normal);
+	float specAngle = pow(max(dot(reflectDir, viewDir), 0.0), material.shininess);
+	//attenuation
+	float distance = length(light.position - fragPos);
+	float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+
+	//combine results
+	vec3 ambient = light.ambientColor * material.ambientColor;
+	vec3 diffuse = light.diffuseColor * material.diffuseColor * diffAngle;
+	vec3 specular = light.specularColor * material.specularColor * specAngle;
+	ambient *= attenuation;
+	diffuse *= attenuation;
+	specular *= attenuation;
+
+	return (ambient + diffuse + specular);
+}
+
+void main()
+{
+	vec3 norm = normalize(normal);
+	vec3 viewDir = normalize(cameraPosition - fragmentPosition);
+	//color vector that will concentrate the contribution of every light source on lighting our materials and output the result
+	vec3 finalColor = vec3(0.0f);
+
+	for(int i = 0; i < NR_DIR_LIGHTS; i++)
+		finalColor += DirectionalLightFunc(dirLights[i], norm, viewDir, material[MaterialIndex]);
+
+	for(int i = 0; i < NR_POINT_LIGHTS; i++)
+		finalColor += PointLightFunc(pointLights[i], norm, fragmentPosition, viewDir, material[MaterialIndex]);
+
+	gl_FragColor = vec4(finalColor, 1.0);
+}
+

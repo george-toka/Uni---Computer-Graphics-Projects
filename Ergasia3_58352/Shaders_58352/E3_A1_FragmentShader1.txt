@@ -1,0 +1,218 @@
+#version 330 core
+
+//1st Cube Textures
+struct Material1
+{
+	sampler2D awesomeFaceTexture;
+
+	float shininess;
+};
+uniform Material1 material1;
+
+//2nd Cube Textures
+struct Material2
+{
+	sampler2D containerTexture;
+	sampler2D awesomeFaceTexture;
+
+	//float shininess;
+};
+uniform Material2 material2;
+
+//3rd Cube Textures
+struct Material3
+{
+	sampler2D container2Texture;
+	sampler2D container2SpecularTexture;
+	sampler2D matrixTexture;
+
+	float shininess;
+};
+uniform Material3 material3;
+
+//Light Caster Specs
+struct LightSource
+{
+	vec3 direction; 
+
+	vec3 ambientColor;
+	vec3 diffuseColor;
+	vec3 specularColor;
+};
+uniform LightSource lightSource;
+
+in vec3 normal;
+in vec3 fragmentPosition;
+in vec2 textureCoordinates;
+in vec2 matrixCoordinates;
+in vec4 planeColor;
+
+uniform vec3 cameraPosition;
+
+//Other Helpful Variables
+//General
+uniform int FragMaterialIndex;
+int i;
+float specularStrength = 1.0f;
+
+//4th Cube
+uniform int textureChoice;
+
+void main()
+{
+
+	i = FragMaterialIndex;
+
+	if(i == 3)
+	{
+
+		if(textureChoice == 0)
+			i = 0;
+
+		else if(textureChoice == 1)
+		{
+		
+			vec3 ambientColor = lightSource.ambientColor * vec3(texture(material2.containerTexture, textureCoordinates));
+
+			//diffuse
+			vec3 normal = normalize(normal);
+			vec3 lightSourceDirection = normalize(-lightSource.direction);	
+		
+			float diffuseAngle = max(dot(lightSourceDirection, normal), 0);
+
+			vec3 diffuseColor = diffuseAngle * lightSource.diffuseColor * vec3(texture(material2.containerTexture, textureCoordinates));
+
+			//specular (not needed because we are dealing with wood here) 
+
+			vec3 finalColor = ambientColor + diffuseColor;
+
+			gl_FragColor = vec4(finalColor, 1.0);
+		}
+
+		else if(textureChoice == 2)
+		{
+			//ambient
+			vec3 ambientColor = lightSource.ambientColor * vec3(texture(material3.container2Texture, textureCoordinates));
+
+			//diffuse
+			vec3 normal = normalize(normal);
+			vec3 lightSourceDirection = normalize(-lightSource.direction);
+
+			float diffuseAngle = max(dot(normal, lightSourceDirection), 0);
+
+			vec3 diffuseColor = diffuseAngle * lightSource.diffuseColor * vec3(texture(material3.container2Texture, textureCoordinates));
+
+			//specular
+			vec3 reflectedLightDirection = reflect(-lightSourceDirection, normal);
+			vec3 viewerDirection = normalize(cameraPosition - fragmentPosition);
+
+			float specularAngle = pow(max(dot(reflectedLightDirection, viewerDirection), 0), material3.shininess);
+
+			vec3 specularColor = specularAngle * lightSource.specularColor * specularStrength * vec3(texture(material3.container2SpecularTexture, textureCoordinates));
+	
+			//output
+			vec3 finalColor = (ambientColor  +  diffuseColor + specularColor);
+
+			gl_FragColor = vec4(finalColor, 1.0f);
+		}
+
+		if(textureChoice == 3)
+			gl_FragColor = texture(material3.matrixTexture, textureCoordinates);
+
+	}
+
+
+	//1st Cube
+	if(i == 0)
+	{
+		//ambient
+		vec3 ambientColor = lightSource.ambientColor * vec3(texture(material1.awesomeFaceTexture, textureCoordinates));
+
+		//diffuse
+		vec3 normal = normalize(normal);
+		vec3 lightSourceDirection = normalize(-lightSource.direction);	
+		
+		float diffuseAngle = max(dot(lightSourceDirection, normal), 0);
+
+		vec3 diffuseColor = diffuseAngle * lightSource.diffuseColor * vec3(texture(material1.awesomeFaceTexture, textureCoordinates));
+
+		//specular 
+		vec3 reflectedLightDirection = reflect(-lightSourceDirection, normal);
+		vec3 viewerDirection = normalize(cameraPosition - fragmentPosition);
+
+		float specularAngle = pow(max(dot(reflectedLightDirection, viewerDirection), 0), material1.shininess);
+		vec3 specularColor = specularAngle * lightSource.specularColor * specularStrength;
+
+		//output
+		vec3 finalColor = ambientColor + diffuseColor + specularColor;
+
+		gl_FragColor = vec4(finalColor, 1.0);
+	}
+
+
+	//2nd Cube
+	if(i == 1)
+	{
+
+		vec4 mixTex = mix(texture(material2.containerTexture, textureCoordinates), texture(material2.awesomeFaceTexture, textureCoordinates),
+		texture(material2.awesomeFaceTexture, textureCoordinates).a * 1.0f);
+
+		//ambient
+		vec3 ambientColor = lightSource.ambientColor * vec3(mixTex);
+
+		//diffuse
+		vec3 normal = normalize(normal);
+		vec3 lightSourceDirection = normalize(-lightSource.direction);	
+		
+		float diffuseAngle = max(dot(lightSourceDirection, normal), 0);
+
+		vec3 diffuseColor = diffuseAngle * lightSource.diffuseColor * vec3(mixTex);
+
+		//specular (not needed because we are dealing with wood here) 
+
+		vec3 finalColor = ambientColor + diffuseColor;
+
+		gl_FragColor = vec4(finalColor, 1.0);
+	}
+
+
+	//3rd Cube
+	if(i == 2)
+	{
+
+		//ambient
+		vec3 ambientColor = lightSource.ambientColor * vec3(texture(material3.container2Texture, textureCoordinates));
+
+		//diffuse
+		vec3 normal = normalize(normal);
+		vec3 lightSourceDirection = normalize(-lightSource.direction);
+
+		float diffuseAngle = max(dot(normal, lightSourceDirection), 0);
+
+		vec3 diffuseColor = diffuseAngle * lightSource.diffuseColor * vec3(texture(material3.container2Texture, textureCoordinates));
+
+		//specular
+		vec3 reflectedLightDirection = reflect(-lightSourceDirection, normal);
+		vec3 viewerDirection = normalize(cameraPosition - fragmentPosition);
+
+		float specularAngle = pow(max(dot(reflectedLightDirection, viewerDirection), 0), material3.shininess);
+
+		vec3 specularColor = specularAngle * lightSource.specularColor * specularStrength * vec3(texture(material3.container2SpecularTexture, textureCoordinates));
+	
+		//output
+		vec3 finalColor = (ambientColor  +  diffuseColor + specularColor);
+
+		gl_FragColor = vec4(finalColor, 1.0f);
+	}
+
+	else if( FragMaterialIndex == 4)
+	{
+		vec4 matrixColor = vec4(texture(material3.matrixTexture, matrixCoordinates));
+		
+		if (matrixColor.g < 0.2f)
+			matrixColor.a = 0.0f;
+		
+		gl_FragColor = matrixColor;
+	}
+
+}

@@ -1,0 +1,712 @@
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <iostream>
+#include <Shader.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include "Camera.h"
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
+Camera myCamera(glm::vec3(0.0f, 0.0f, 3.0f));
+
+float deltaTime = 0.0f;
+float currentFrameTime = 0.0f;
+float previousFrameTime = 0.0f;
+
+float previousMousePositonX = 400.0f;
+float previousMousePositonY = 300.0f;
+
+bool firstMouse = true;
+
+void FrameBufferSizeCallback(GLFWwindow* givenWindow, int givenWidth, int givenHeight)
+{
+	glViewport(0, 0, givenWidth, givenHeight);
+}
+
+void ProcessInput(GLFWwindow* givenWindow)
+{
+	bool SpeedBoost;
+
+	if (glfwGetKey(givenWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(givenWindow, true);
+
+	//------------------------------------------------------------------
+	if (glfwGetKey(givenWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+		SpeedBoost = true;
+	else
+		SpeedBoost = false;
+	//------------------------------------------------------------------
+
+	if (glfwGetKey(givenWindow, GLFW_KEY_W) == GLFW_PRESS)
+		myCamera.ProcessKeyboard(FORWARD, deltaTime, SpeedBoost);
+
+	if (glfwGetKey(givenWindow, GLFW_KEY_S) == GLFW_PRESS)
+		myCamera.ProcessKeyboard(BACKWARD, deltaTime, SpeedBoost);
+
+	if (glfwGetKey(givenWindow, GLFW_KEY_A) == GLFW_PRESS)
+		myCamera.ProcessKeyboard(LEFT, deltaTime, SpeedBoost);
+
+	if (glfwGetKey(givenWindow, GLFW_KEY_D) == GLFW_PRESS)
+		myCamera.ProcessKeyboard(RIGHT, deltaTime, SpeedBoost);
+
+	if (glfwGetKey(givenWindow, GLFW_KEY_E) == GLFW_PRESS)
+		myCamera.ProcessKeyboard(UP, deltaTime, SpeedBoost);
+
+	if (glfwGetKey(givenWindow, GLFW_KEY_Q) == GLFW_PRESS)
+		myCamera.ProcessKeyboard(DOWN, deltaTime, SpeedBoost);
+}
+
+void MousPositionCallback(GLFWwindow* givenWindow, double givenMousePositionX, double givenMousePositionY)
+{
+	//std::cout << givenMousePositionX << std::endl;
+	//std::cout << givenMousePositionY << std::endl;
+
+	if (firstMouse)
+	{
+		previousMousePositonX = givenMousePositionX;
+		previousMousePositonY = givenMousePositionY;
+
+		firstMouse = false;
+	}
+
+	float offsetX = givenMousePositionX - previousMousePositonX;
+	float offsetY = previousMousePositonY - givenMousePositionY;
+	previousMousePositonX = givenMousePositionX;
+	previousMousePositonY = givenMousePositionY;
+
+	myCamera.ProcessMouseMovement(offsetX, offsetY);
+}
+
+void ScrollCallback(GLFWwindow* givenWindow, double givenScrollOffsetX, double givenScrollOffsetY)
+{
+	myCamera.ProcessMouseScroll(givenScrollOffsetY);
+}
+
+int main()
+{
+
+	// Initialization
+
+	if (!glfwInit())
+	{
+		std::cout << "Failed to initialize glfw!" << std::endl;
+		return -1;
+	}
+
+	GLFWwindow* window = glfwCreateWindow(1000, 700, "OpenGL Lab3", NULL, NULL);
+
+	if (!window)
+	{
+		std::cout << "Failed to initialize the window!" << std::endl;
+		glfwTerminate();
+		return -1;
+	}
+
+	glfwMakeContextCurrent(window);
+
+	// Set the callback function
+	glfwSetFramebufferSizeCallback(window, FrameBufferSizeCallback);
+
+	glfwSetCursorPosCallback(window, MousPositionCallback);
+
+	glfwSetScrollCallback(window, ScrollCallback);
+
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+	if (glewInit() != GLEW_OK)
+	{
+		std::cout << "Failed to initialize glew!" << std::endl;
+		glfwTerminate();
+		return -1;
+	}
+
+	std::cout << glGetString(GL_VERSION) << std::endl;
+
+	const char* glsl_version = "#version 330";
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
+
+	//Data
+
+	//--Vertex Data
+	float vertices[] =
+	{
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+
+		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+
+	};
+
+	glm::vec3 cubePositions[] =
+	{
+	  glm::vec3(0.0f,  0.0f,  0.0f),
+	  glm::vec3(2.0f,  5.0f, -15.0f),
+	  glm::vec3(-1.5f, -2.2f, -2.5f),
+	  glm::vec3(-3.8f, -2.0f, -12.3f),
+	  glm::vec3(2.4f, -0.4f, -3.5f),
+	  glm::vec3(-1.7f,  3.0f, -7.5f),
+	  glm::vec3(1.3f, -2.0f, -2.5f),
+	  glm::vec3(1.5f,  2.0f, -2.5f),
+	  glm::vec3(1.5f,  0.2f, -1.5f),
+	  glm::vec3(-1.3f,  1.0f, -1.5f)
+	};
+
+	//Light Sources Data
+	float RotLightRadius = 5.0f;
+
+	glm::vec3 PointLightPositions[] =
+	{
+		glm::vec3(2.3, -3.3f, -4.0f),
+		glm::vec3(0.0f, 0.0f, -3.0f),
+		glm::vec3(3.4f, 4.0f, -14.0f),
+		glm::vec3(RotLightRadius, 0.0f, 0.0f)  //rotating light - we initialise an arbitrary position for it 
+	};
+
+	glm::vec3 DirLightPositions[] =
+	{
+		glm::vec3(0.0f, 10.0f, -10.0f),
+		glm::vec3(10.0f,10.0f, -10.0f)
+	};
+
+	glm::vec3 DirLightDirection[] =
+	{
+		glm::vec3(0.0f, -1.0f, 0.0f),
+		glm::vec3(-1.0f,-1.0f, 0.0f)
+	};
+
+	glm::vec3 PointLightContribution[] =
+	{
+		glm::vec3(1.0f), //1st Point Light Contribution
+		glm::vec3(1.0f), //2nd Point Light Contribution
+		glm::vec3(1.0f), //3rd Point Light Contribution
+		glm::vec3(1.0f)  //Moving Point Light Contribution
+	};
+
+	glm::vec3 DirLightContribution[] =
+	{
+		glm::vec3(1.0f), //1st Direction Light Contribution
+		glm::vec3(1.0f) //2rd Direction Light Contribution
+	};
+
+	//The two arrays below control if a light source contributes to the scene or not
+	bool PointLightSwitch[] =
+	{
+		true,	//1st Point Light Switch
+		true,	//2nd Point Light Switch
+		true,	//3rd Point Light Switch
+		true	//Moving Point Light Switch
+	};
+
+	bool DirLightSwitch[] =
+	{
+		true,	//1st Directional Light Switch
+		true	//2nd Directional Light Switch
+	};
+
+	bool PointLightSwitchboard = true;
+	bool DirLightSwitchboard = true;
+
+	// vbo & vao to render the cubes and tell gpu how to do that
+	unsigned int VBO, objVAO;
+
+	glGenVertexArrays(1, &objVAO);
+	glGenBuffers(1, &VBO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (const void*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (const void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+
+	Shader shaderProgram("res/Shaders_58352/E2_VertexShader.txt", "res/Shaders_58352/E2_FragmentShader.txt");
+	Shader lightSourceShaderProgram("res/Shaders_58352/E2_vertex_light.txt", "res/Shaders_58352/E2_fragment_light.txt");
+
+
+	glm::mat4 identity = glm::mat4(1.0f);
+
+	glEnable(GL_DEPTH_TEST);
+
+	glDepthFunc(GL_LESS);
+
+	glEnable(GL_COLOR_MATERIAL);
+
+	//Secondary Data Used For The ImGui Interface
+
+	//Distance coefficients of attenuation for point lights
+	float constant = 1.0f;
+	float linear = 0.09f;
+	float quadratic = 0.032f;
+	int range = 50;
+
+	//
+	bool KEY_PRESSED[] = {false, false, false, false, false, false, false, false };
+	bool KEY_RELEASED[] = {true, true, true, true, true , true, true, true };
+
+
+	// Game loop
+	while (!glfwWindowShouldClose(window))
+	{
+		ProcessInput(window);
+
+		float time = glfwGetTime();
+
+		currentFrameTime = time;
+		deltaTime = currentFrameTime - previousFrameTime;
+		previousFrameTime = currentFrameTime;
+
+		glClearColor(0.2f, 0.2f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Render Using the shader program
+		shaderProgram.use();
+
+		shaderProgram.setVec3("cameraPosition", myCamera.Position);
+
+//--------------------------------------------------------------------------------1 
+		// Materials' Setup (values taken from the table suggested in the exercise description)
+
+		//1st - emerald
+		shaderProgram.setVec3("material[0].ambientColor", glm::vec3(0.022f, 0.175f, 0.022f));
+		shaderProgram.setVec3("material[0].diffuseColor", glm::vec3(0.076f, 0.61f, 0.076f));
+		shaderProgram.setVec3("material[0].specularColor", glm::vec3(0.633f, 0.728f, 0.633f));
+		shaderProgram.setFloat("material[0].shininess", 128.0f * 0.6f);
+		//2nd - cyan plastic
+		shaderProgram.setVec3("material[1].ambientColor", glm::vec3(0.0f, 0.1f, 0.06f));
+		shaderProgram.setVec3("material[1].diffuseColor", glm::vec3(0.0f, 0.51f, 0.51f));
+		shaderProgram.setVec3("material[1].specularColor", glm::vec3(0.51f, 0.51f, 0.51f));
+		shaderProgram.setFloat("material[1].shininess", 128.0f * 0.25f);
+		//3rd - chrome
+		shaderProgram.setVec3("material[2].ambientColor", glm::vec3(0.25f, 0.25f, 0.25f));
+		shaderProgram.setVec3("material[2].diffuseColor", glm::vec3(0.4f, 0.4f, 0.4f));
+		shaderProgram.setVec3("material[2].specularColor", glm::vec3(0.775f, 0.775f, 0.775f));
+		shaderProgram.setFloat("material[2].shininess", 128.0f * 0.6f);
+		//4th - pearl
+		shaderProgram.setVec3("material[3].ambientColor", glm::vec3(0.25f, 0.21f, 0.21f));
+		shaderProgram.setVec3("material[3].diffuseColor", glm::vec3(1.0f, 0.829f, 0.829f));
+		shaderProgram.setVec3("material[3].specularColor", glm::vec3(0.3f, 0.3f, 0.3f));
+		shaderProgram.setFloat("material[3].shininess", 128.0f * 0.088f);
+		//5th - obsidian
+		shaderProgram.setVec3("material[4].ambientColor", glm::vec3(0.054f, 0.05f, 0.066f));
+		shaderProgram.setVec3("material[4].diffuseColor", glm::vec3(0.182f, 0.17f, 0.22f));
+		shaderProgram.setVec3("material[4].specularColor", glm::vec3(0.33f, 0.33f, 0.35f));
+		shaderProgram.setFloat("material[4].shininess", 128.0f * 0.3f);
+		//6th - turquoise
+		shaderProgram.setVec3("material[5].ambientColor", glm::vec3(0.1f, 0.19f, 0.017f));
+		shaderProgram.setVec3("material[5].diffuseColor", glm::vec3(0.4f, 0.74f, 0.69f));
+		shaderProgram.setVec3("material[5].specularColor", glm::vec3(0.3f, 0.3f, 0.3f));
+		shaderProgram.setFloat("material[5].shininess", 128.0f * 0.1f);
+		//7th - green plastic
+		shaderProgram.setVec3("material[6].ambientColor", glm::vec3(0.0f, 0.0f, 0.0f));
+		shaderProgram.setVec3("material[6].diffuseColor", glm::vec3(0.1f, 0.35f, 0.1f));
+		shaderProgram.setVec3("material[6].specularColor", glm::vec3(0.45f, 0.55f, 0.45f));
+		shaderProgram.setFloat("material[6].shininess", 128.0f * 0.25f);
+		//8th - red rubber
+		shaderProgram.setVec3("material[7].ambientColor", glm::vec3(0.05f, 0.0f, 0.0f));
+		shaderProgram.setVec3("material[7].diffuseColor", glm::vec3(0.5f, 0.4f, 0.4f));
+		shaderProgram.setVec3("material[7].specularColor", glm::vec3(0.7f, 0.04f, 0.04f));
+		shaderProgram.setFloat("material[7].shininess", 128.0f * 0.078f);
+		//9th - gold
+		shaderProgram.setVec3("material[8].ambientColor", glm::vec3(0.25f, 0.2f, 0.075f));
+		shaderProgram.setVec3("material[8].diffuseColor", glm::vec3(0.75f, 0.61f, 0.23f));
+		shaderProgram.setVec3("material[8].specularColor", glm::vec3(0.63f, 0.556f, 0.366f));
+		shaderProgram.setFloat("material[8].shininess", 128.0f * 0.4f);
+		//10th - jade
+		shaderProgram.setVec3("material[9].ambientColor", glm::vec3(0.135f, 0.22f, 0.158f));
+		shaderProgram.setVec3("material[9].diffuseColor", glm::vec3(0.54f, 0.89f, 0.63f));
+		shaderProgram.setVec3("material[9].specularColor", glm::vec3(0.32f, 0.32f, 0.32f));
+		shaderProgram.setFloat("material[9].shininess", 128.0f * 0.1f);
+
+//--------------------------------------------------------------------------------2
+
+		//Light Sources Setup
+
+		//1st Point	Light
+		shaderProgram.setVec3("pointLights[0].position", PointLightPositions[0]);
+
+		shaderProgram.setVec3("pointLights[0].ambientColor", PointLightContribution[0]);
+		shaderProgram.setVec3("pointLights[0].diffuseColor", PointLightContribution[0]);
+		shaderProgram.setVec3("pointLights[0].specularColor", PointLightContribution[0]);
+
+		shaderProgram.setFloat("pointLights[0].constant", constant);
+		shaderProgram.setFloat("pointLights[0].linear", linear);
+		shaderProgram.setFloat("pointLights[0].quadratic", quadratic);
+		//2nd Point	Light
+		shaderProgram.setVec3("pointLights[1].position", PointLightPositions[1]);
+
+		shaderProgram.setVec3("pointLights[1].ambientColor", PointLightContribution[1]);
+		shaderProgram.setVec3("pointLights[1].diffuseColor", PointLightContribution[1]);
+		shaderProgram.setVec3("pointLights[1].specularColor", PointLightContribution[1]);
+
+		shaderProgram.setFloat("pointLights[1].constant", constant);
+		shaderProgram.setFloat("pointLights[1].linear", linear);
+		shaderProgram.setFloat("pointLights[1].quadratic", quadratic);
+		//3rd Point	Light
+		shaderProgram.setVec3("pointLights[2].position", PointLightPositions[2]);
+
+		shaderProgram.setVec3("pointLights[2].ambientColor", PointLightContribution[2]);
+		shaderProgram.setVec3("pointLights[2].diffuseColor", PointLightContribution[2]);
+		shaderProgram.setVec3("pointLights[2].specularColor", PointLightContribution[2]);
+
+		shaderProgram.setFloat("pointLights[2].constant", constant);
+		shaderProgram.setFloat("pointLights[2].linear", linear);
+		shaderProgram.setFloat("pointLights[2].quadratic", quadratic);
+
+		//1st Directional Light 
+		shaderProgram.setVec3("dirLights[0].position", DirLightPositions[0]);
+		shaderProgram.setVec3("dirLights[0].direction", DirLightDirection[0]);
+
+		shaderProgram.setVec3("dirLights[0].ambientColor", DirLightContribution[0]);
+		shaderProgram.setVec3("dirLights[0].diffuseColor", DirLightContribution[0]);
+		shaderProgram.setVec3("dirLights[0].specularColor", DirLightContribution[0]);
+
+		//2nd Directional Light 
+		shaderProgram.setVec3("dirLights[1].position", DirLightPositions[1]);
+		shaderProgram.setVec3("dirLights[1].direction", DirLightDirection[1]);
+
+		shaderProgram.setVec3("dirLights[1].ambientColor", DirLightContribution[1]);
+		shaderProgram.setVec3("dirLights[1].diffuseColor", DirLightContribution[1]);
+		shaderProgram.setVec3("dirLights[1].specularColor", DirLightContribution[1]);
+
+		//rotating point light
+		PointLightPositions[3] = { RotLightRadius * cos(time), RotLightRadius * sin(time), 0.0f };
+		shaderProgram.setVec3("pointLights[3].position", PointLightPositions[3]);
+
+		shaderProgram.setVec3("pointLights[3].ambientColor", PointLightContribution[3]);
+		shaderProgram.setVec3("pointLights[3].diffuseColor", PointLightContribution[3]);
+		shaderProgram.setVec3("pointLights[3].specularColor", PointLightContribution[3]);
+
+		shaderProgram.setFloat("pointLights[3].constant", constant);
+		shaderProgram.setFloat("pointLights[3].linear", linear);
+		shaderProgram.setFloat("pointLights[3].quadratic", quadratic);
+//--------------------------------------------------------------------------------
+
+		glm::mat4 view;
+		view = myCamera.GetViewMatrix(); // now we get the view matrix form the camrera class -------------
+		shaderProgram.setMat4("view", view);
+
+		glm::mat4 projection;
+
+		// 3D
+		projection = glm::perspective(glm::radians(myCamera.Zoom), 1000.0f / 700.0f, 0.3f, 100.0f); // now we get the zoom form the camera class ---------------------
+
+		shaderProgram.setMat4("projection", projection);
+
+		//Material Rendering
+		for (int i = 0; i < 10; i++)
+		{
+			shaderProgram.setInt("MaterialIndex", i);
+
+			glm::mat4 model;
+
+			model = glm::translate(identity, cubePositions[i]);
+			model = glm::rotate(model, glm::radians(20.0f) * i, glm::vec3(1.0f, 0.3f, 0.5f));
+
+			shaderProgram.setMat4("model", model);
+
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
+
+//--------------------------------------------------------------------------------3
+
+		//Light Source Rendering 
+		lightSourceShaderProgram.use();
+
+		lightSourceShaderProgram.setMat4("view", view);
+		lightSourceShaderProgram.setMat4("projection", projection);
+
+		//Point Lights
+		for (int i = 0; i < sizeof(PointLightPositions) / sizeof(PointLightPositions[0]); i++)
+		{
+			if (PointLightSwitchboard)
+			{
+				if (PointLightSwitch[i])
+				{
+					glm::mat4 model = glm::translate(identity, PointLightPositions[i]);
+					lightSourceShaderProgram.setMat4("model", model);
+
+					glDrawArrays(GL_TRIANGLES, 0, 36);
+				}
+			}
+			else
+				break;
+		}
+
+		//Directional Lights
+		for (int i = 0; i < sizeof(DirLightPositions) / sizeof(DirLightPositions[0]); i++)
+		{
+			if (DirLightSwitchboard)
+			{
+				if (DirLightSwitch[i])
+				{
+					glm::mat4 model = glm::translate(identity, DirLightPositions[i]);
+					lightSourceShaderProgram.setMat4("model", model);
+
+					glDrawArrays(GL_TRIANGLES, 0, 36);
+				}
+			}
+			else
+				break;			
+		}
+//--------------------------------------------------------------------------------4
+
+		//ImGui Frame Initialisation
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		
+		//ImGui Tool Layout Setup
+		ImGui::Begin("Tool Window");
+
+		ImGui::SliderFloat("Radius", &RotLightRadius, 2.0f, 10.0f);
+
+		ImGui::Text("Choose Attenuation Distance For Point Light Strength");
+
+		ImGui::RadioButton("20 Units", &range, 20);		ImGui::SameLine();
+		ImGui::RadioButton("32 Units", &range, 32);		ImGui::SameLine();
+		ImGui::RadioButton("50 Units", &range, 50);		ImGui::SameLine();
+		ImGui::RadioButton("65 Units", &range, 65);		ImGui::SameLine();
+		ImGui::RadioButton("100 Units",&range, 100);
+
+		ImGui::Checkbox("Point Lights", &PointLightSwitchboard);	
+		ImGui::SameLine();
+		ImGui::Text("// Press 1 To Enable - Disable");
+
+		ImGui::Checkbox("Directional Lights", &DirLightSwitchboard);
+		ImGui::SameLine();
+		ImGui::Text("// Press 2 To Enable - Disable");
+
+		ImGui::Checkbox("Point Light 1", &PointLightSwitch[0]);
+		ImGui::SameLine();
+		ImGui::Text("// Press 3 To Enable - Disable");
+
+		ImGui::Checkbox("Point Light 2", &PointLightSwitch[1]);
+		ImGui::SameLine();
+		ImGui::Text("// Press 4 To Enable - Disable");
+
+		ImGui::Checkbox("Point Light 3", &PointLightSwitch[2]);
+		ImGui::SameLine();
+		ImGui::Text("// Press 5 To Enable - Disable");
+
+		ImGui::Checkbox("Directional Light 1", &DirLightSwitch[0]);
+		ImGui::SameLine();
+		ImGui::Text("// Press 6 To Enable - Disable");
+
+		ImGui::Checkbox("Directional Light 2", &DirLightSwitch[1]);
+		ImGui::SameLine();
+		ImGui::Text("// Press 7 To Enable - Disable");
+
+		ImGui::Checkbox("Point Light Moving", &PointLightSwitch[3]);
+		ImGui::SameLine();
+		ImGui::Text("// Press 8 To Enable - Disable");
+		
+		//Radiobutton - Light Range Choice
+		switch (range)
+		{
+			case 20:
+				constant = 1.0f;
+				linear = 0.22f;
+				quadratic = 0.20f;
+				break;
+
+			case 32:
+				constant = 1.0f;
+				linear = 0.14f;
+				quadratic = 0.07f;
+				break;
+
+			case 50:
+				constant = 1.0f;
+				linear = 0.09f;
+				quadratic = 0.032f;
+				break;
+
+			case 65:
+				constant = 1.0f;
+				linear = 0.07f;
+				quadratic = 0.017f;
+				break;
+
+			case 100:
+				constant = 1.0f;
+				linear = 0.045f;
+				quadratic = 0.0075f;
+				break;
+
+			default:
+				std::cout << "Error Occured In ImGui::RadioButton\n";
+		}
+
+		//Light Source Contribution Choice - Light Switchboard
+		
+		//Point Lights
+		for (int i = 0; i < sizeof(PointLightContribution) / sizeof(PointLightContribution[0]); i++)
+		{
+			if (PointLightSwitch[i] == true && PointLightSwitchboard == true)
+				PointLightContribution[i] = glm::vec3(1.0f);
+
+			else
+				PointLightContribution[i] = glm::vec3(0.0f);
+		}
+		
+		//Directional Lights
+		for (int i = 0; i < sizeof(DirLightContribution) / sizeof(DirLightContribution[0]); i++)
+		{
+			if (DirLightSwitch[i] == true && DirLightSwitchboard == true)
+				DirLightContribution[i] = glm::vec3(1.0f);
+
+			else
+				DirLightContribution[i] = glm::vec3(0.0f);
+		}
+
+		//Keys to handle the checkboxes
+		
+		//All Point Lights
+		if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS && KEY_PRESSED[6] != KEY_RELEASED[6])
+		{
+			PointLightSwitchboard = !PointLightSwitchboard;
+			KEY_PRESSED[6] = !KEY_PRESSED[6];
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_1) == GLFW_RELEASE && KEY_PRESSED[6] == KEY_RELEASED[6])
+			KEY_PRESSED[6] = !KEY_PRESSED[6];
+
+		//All Directional Lights
+		if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS && KEY_PRESSED[7] != KEY_RELEASED[7])
+		{
+			DirLightSwitchboard = !DirLightSwitchboard;
+			KEY_PRESSED[7] = !KEY_PRESSED[7];
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_2) == GLFW_RELEASE && KEY_PRESSED[7] == KEY_RELEASED[7])
+			KEY_PRESSED[7] = !KEY_PRESSED[7];
+
+		//1st Point Light
+		if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS && KEY_PRESSED[0] != KEY_RELEASED[0])
+		{
+			PointLightSwitch[0] = !PointLightSwitch[0];
+			KEY_PRESSED[0] = !KEY_PRESSED[0];
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_3) == GLFW_RELEASE && KEY_PRESSED[0] == KEY_RELEASED[0])
+			KEY_PRESSED[0] = !KEY_PRESSED[0];
+
+		//2nd Point	Light
+		if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS && KEY_PRESSED[1] != KEY_RELEASED[1])
+		{
+			PointLightSwitch[1] = !PointLightSwitch[1];
+			KEY_PRESSED[1] = !KEY_PRESSED[1];
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_4) == GLFW_RELEASE && KEY_PRESSED[1] == KEY_RELEASED[1])
+			KEY_PRESSED[1] = !KEY_PRESSED[1];
+
+		//3rd Point Light
+		if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS && KEY_PRESSED[2] != KEY_RELEASED[2])
+		{
+			PointLightSwitch[2] = !PointLightSwitch[2];
+			KEY_PRESSED[2] = !KEY_PRESSED[2];
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_5) == GLFW_RELEASE && KEY_PRESSED[2] == KEY_RELEASED[2])
+			KEY_PRESSED[2] = !KEY_PRESSED[2];
+
+		//1st Directional Light
+		if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS && KEY_PRESSED[4] != KEY_RELEASED[4])
+		{
+			DirLightSwitch[0] = !DirLightSwitch[0];
+			KEY_PRESSED[4] = !KEY_PRESSED[4];
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_6) == GLFW_RELEASE && KEY_PRESSED[4] == KEY_RELEASED[4])
+			KEY_PRESSED[4] = !KEY_PRESSED[4];
+
+		//2nd Directional Light
+		if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS && KEY_PRESSED[5] != KEY_RELEASED[5])
+		{
+			DirLightSwitch[1] = !DirLightSwitch[1];
+			KEY_PRESSED[5] = !KEY_PRESSED[5];
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_7) == GLFW_RELEASE && KEY_PRESSED[5] == KEY_RELEASED[5])
+			KEY_PRESSED[5] = !KEY_PRESSED[5];
+
+		//Moving Point Light
+		if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS && KEY_PRESSED[3] != KEY_RELEASED[3])
+		{
+			PointLightSwitch[3] = !PointLightSwitch[3];
+			KEY_PRESSED[3] = !KEY_PRESSED[3];
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_8) == GLFW_RELEASE && KEY_PRESSED[3] == KEY_RELEASED[3])
+			KEY_PRESSED[3] = !KEY_PRESSED[3];
+
+		ImGui::End();
+
+		//Render Dear ImGui Loop
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+
+	glfwTerminate();
+	return 0;
+}
