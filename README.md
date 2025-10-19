@@ -5,11 +5,6 @@
 * Camera Theory
 * Textures
 * 3D Models
-<br>
-The 4th and final project is in a different project folder because the configuration properties<br>
-are different. Visual Studio 2019 was used.<br>
-Because the project folders and the montage of the results are too big to upload follow the Google Drive Link to gain<br>
-access to them -> https://drive.google.com/drive/folders/1GNByWtGqAhhrigxtqv_bHUChwkI-xMnK?usp=drive_link
-<br>
+
 
   
